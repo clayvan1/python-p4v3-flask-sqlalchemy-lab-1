@@ -1,10 +1,10 @@
-# server/app.py
 #!/usr/bin/env python3
 
-from flask import Flask, make_response
+from flask import Flask, make_response, jsonify
 from flask_migrate import Migrate
+from sqlalchemy import func
 
-from models import db, Earthquake
+from models import db, Earthquake  # Import the Earthquake model
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
@@ -20,8 +20,35 @@ def index():
     body = {'message': 'Flask SQLAlchemy Lab 1'}
     return make_response(body, 200)
 
-# Add views here
+# New route to get an earthquake by ID
+@app.route('/earthquakes/<int:id>')
+def get_earthquake(id):
+    earthquake = Earthquake.query.get(id)  # Use .get() for by-primary-key lookup
 
+    if earthquake:
+        results = {
+            "id": earthquake.id,
+            "magnitude": earthquake.magnitude,
+            "location": earthquake.location,
+            "year": earthquake.year
+        }
+        return jsonify(results), 200  # Explicit 200 OK status
+    else:
+        return jsonify({"message": f"Earthquake {id} not found."}), 404  # Explicit 404 Not Found status
 
-if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+# New route to get earthquakes by magnitude
+@app.route('/earthquakes/magnitude/<float:magnitude>')
+def get_earthquakes_by_magnitude(magnitude):
+    earthquakes = Earthquake.query.filter(Earthquake.magnitude >= magnitude).all()
+
+    results = [
+        {
+            "id": quake.id,
+            "magnitude": quake.magnitude,
+            "location": quake.location,
+            "year": quake.year
+        } for quake in earthquakes
+    ]
+    count = len(results)  # Get the count
+
+    return jsonify({"count": count, "quakes": results}), 200
